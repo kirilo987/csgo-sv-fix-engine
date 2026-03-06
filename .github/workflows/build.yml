@@ -1,0 +1,40 @@
+name: Build Extension
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Dependencies
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y g++-multilib git lib32stdc++6
+
+      - name: Build Extension
+        run: |
+          # Якщо в репозиторії є Makefile
+          if [ -f Makefile ]; then
+            make
+          elif [ -f configure.py ]; then
+            # Якщо використовується AMBuild (стандарт для SourceMod)
+            python3 -m pip install ambuild
+            python3 configure.py
+            ambuild
+          else
+            # Якщо просто треба скомпілювати один файл (як часто буває в таких фіксах)
+            g++ -m32 -shared -fPIC -o csgo_steamfix.ext.so *.cpp -I. 
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: csgo-steamfix-linux
+          path: ./*.so
