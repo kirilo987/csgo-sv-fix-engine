@@ -14,30 +14,18 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y g++-multilib git
+          sudo apt-get install -y g++-multilib build-essential
 
-      - name: Download SDKs
+      - name: Manual Compile
         run: |
-          git clone --depth 1 https://github.com/alliedmodders/sourcemod --branch master sourcemod
-          git clone --depth 1 https://github.com/alliedmodders/metamod-source --branch master metamod
-          git clone --depth 1 https://github.com/alliedmodders/hl2sdk --branch csgo hl2sdk-csgo
-
-      - name: Manual Compile (Fastest Way)
-        run: |
-          # Ми компілюємо напряму g++, бо Makefile цього проекту може вимагати складних налаштувань
+          # Компілюємо один єдиний файл main.cpp
+          # Використовуємо внутрішню папку sdk, яка вже є в репо
           g++ -O3 -m32 -shared -fPIC \
             -o csgo_steamfix.ext.so \
             main.cpp \
-            -D_LINUX -DPOSIX -D_alloca=alloca \
+            -D_LINUX -DPOSIX -D_alloca=alloca -DSOURCEMOD_BUILD -DEXT_WORKING \
             -I. \
-            -I./sdk \
-            -I./sourcemod/public \
-            -I./sourcemod/public/extensions \
-            -I./metamod/core \
-            -I./metamod/core/sourcehook \
-            -I./hl2sdk-csgo/public \
-            -I./hl2sdk-csgo/public/tier0 \
-            -I./hl2sdk-csgo/public/tier1
+            -I./sdk
 
       - name: Upload Result
         uses: actions/upload-artifact@v4
