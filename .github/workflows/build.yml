@@ -1,4 +1,4 @@
-name: Build Extension (AMBuild)
+name: Build CSGO SteamFix
 
 on: [push, pull_request, workflow_dispatch]
 
@@ -9,32 +9,38 @@ jobs:
     steps:
       - name: Checkout Plugin
         uses: actions/checkout@v4
-        with:
-          path: plugin
-          submodules: recursive
 
-      - name: Checkout Dependencies (SDKs)
+      - name: Install Compilers
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y g++-multilib git
+
+      - name: Download SDKs
         run: |
           git clone --depth 1 https://github.com/alliedmodders/sourcemod --branch master sourcemod
           git clone --depth 1 https://github.com/alliedmodders/metamod-source --branch master metamod
           git clone --depth 1 https://github.com/alliedmodders/hl2sdk --branch csgo hl2sdk-csgo
-          git clone --depth 1 https://github.com/alliedmodders/ambuild ambuild
 
-      - name: Install Python & AMBuild
+      - name: Manual Compile (Fastest Way)
         run: |
-          sudo dpkg --add-architecture i386
-          sudo apt-get update
-          sudo apt-get install -y g++-multilib python3-pip
-          pip3 install ./ambuild
+          # Ми компілюємо напряму g++, бо Makefile цього проекту може вимагати складних налаштувань
+          g++ -O3 -m32 -shared -fPIC \
+            -o csgo_steamfix.ext.so \
+            main.cpp \
+            -D_LINUX -DPOSIX -D_alloca=alloca \
+            -I. \
+            -I./sdk \
+            -I./sourcemod/public \
+            -I./sourcemod/public/extensions \
+            -I./metamod/core \
+            -I./metamod/core/sourcehook \
+            -I./hl2sdk-csgo/public \
+            -I./hl2sdk-csgo/public/tier0 \
+            -I./hl2sdk-csgo/public/tier1
 
-      - name: Build Extension
-        working-directory: plugin
-        run: |
-          python3 configure.py --sm-path="${{ github.workspace }}/sourcemod" --mm-path="${{ github.workspace }}/metamod" --hl2sdk-root="${{ github.workspace }}"
-          ambuild
-
-      - name: Upload Artifact
+      - name: Upload Result
         uses: actions/upload-artifact@v4
         with:
           name: csgo-steamfix-linux
-          path: plugin/build/package/addons/sourcemod/extensions/*.so
+          path: csgo_steamfix.ext.so
